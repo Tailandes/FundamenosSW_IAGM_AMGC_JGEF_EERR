@@ -1,4 +1,60 @@
+-- =============================================
+-- Create database on multiple filegroups
+-- =============================================
 
+CREATE DATABASE transportes_IAEJ
+ON PRIMARY
+	(NAME = IAEJ_VIAJES_dat,
+	  FILENAME = N'C:\IAEJ\IAEJ_VIAJES_dat.mdf',
+          SIZE = 10MB,
+          MAXSIZE = 459MB,
+          FILEGROWTH = 1MB),
+	
+FILEGROUP  IAEJ_SECUNDARY
+	( NAME = IAEJ_PAGO,
+	  FILENAME = N'C:\IAEJ\IAEJ_PAGO.nfd',
+          SIZE = 10MB,
+          MAXSIZE = 301MB,
+          FILEGROWTH = 1MB),
+	
+	
+
+FILEGROUP IAEJ_PRIORITY
+	( NAME = IAEJ_CLIENTES,
+	  FILENAME = N'C:\IAEJ\IAEJ_CLIENTES.nfd',
+          SIZE = 10MB,
+          MAXSIZE = 757MB,
+          FILEGROWTH = 1MB),
+
+FILEGROUP IAEJ_PARTICION_FG
+	( NAME = IAEJ_PART1,
+	  FILENAME = N'C:\IAEJ\IAEJ_PART1.nfd',
+          SIZE = 10MB,
+          MAXSIZE = 7218MB,
+          FILEGROWTH = 1MB),
+
+
+
+FILEGROUP IAEJ_PARTICION_FG2
+	( NAME = IAEJ_PART2,
+	  FILENAME = N'C:\IAEJ\IAEJ_PART2.nfd',
+          SIZE = 10MB,
+          MAXSIZE = 7218MB,
+          FILEGROWTH = 1MB)
+
+
+
+
+LOG ON
+	( NAME = IAEJ_LOG,
+	  FILENAME = N'C:\IAEJ\IAEJ_LOG.log',
+          SIZE = 10MB,
+          MAXSIZE = 4758MB,
+          FILEGROWTH = 1MB)
+
+GO
+
+	  -----------------------------------
 --A-- -------creacion de esquemas--------
 	  -----------------------------------
 	  create schema Viajes
@@ -15,13 +71,13 @@
 
 
 	  -------Particion---------
-	  CREATE PARTITION FUNCTION pf_cantidades (int)
+	  CREATE PARTITION FUNCTION pf_cantidades (float)
 	  AS RANGE LEFT FOR VALUES (1000,3000);
 	  go
 
 	  CREATE PARTITION SCHEME ps_cantidad
 	  AS 
-      PARTITION pf_cantidad
+      PARTITION pf_cantidades
       TO (IAEJ_PARTICION_FG,IAEJ_PARTICION_FG2,"Primary")
 	  GO
 
@@ -46,11 +102,11 @@
 	  -------Corridas---------
 	  create table Viajes.Corridas (
 	  id_viaje int not null,
-	  horarioSalida date not null,
+	  horarioSalida time not null,
 	  fechaSalida date not null,
 	  Ciudades_id_ciudades int not null,
 	  costos float not null,
-	  horaLLegada date not null,
+	  horaLLegada time not null,
 	  fechaLLegada date not null,
 	  Autobuses_idAutobus int not null,
 	  asientosOcupados int not null,
@@ -90,9 +146,9 @@
 	  num_tarjeta varchar(16) not null,
 	  fecha_expiracion date not null,
 	  cvv int not null,
-	  Clientes_id_usuario varchar(15) not null
+	  Clientes_id_usuario varchar(16) not null
 	  )
-	  on IAEJ_SECUNDARY_FG
+	  on IAEJ_SECUNDARY
 	  with (data_compression=Row)
 
 
@@ -102,7 +158,7 @@
 	  nombre_usuario varchar(50) not null,
 	  curp varchar(18) not null
 	  )
-	  on IAEJ_PRIORITY_FG
+	  on IAEJ_PRIORITY
 	  with (data_compression=Row)
 
 
@@ -113,7 +169,7 @@
 	  fechaInicio date not null,
 	  fechaFin date not null
 	  )
-	  on IAEJ_PRIORITY_FG
+	  on IAEJ_PRIORITY
 	  with (data_compression=Page)
 
 
@@ -125,7 +181,7 @@
 	  estatus char not null,
 	  costo float not null
 	  )
-	  on IAEJ_PRIORITY_FG
+	  on IAEJ_PRIORITY
 	  with (data_compression=Page)
 
 
@@ -137,10 +193,10 @@
 	  alter  table Viajes.Autobuses add constraint Autobuses_PK primary  key (idAutobus)
 	  alter  table Viajes.Corridas  add constraint Viajes_salientes_PK primary  key (id_viaje)
 	  alter  table Viajes.Ciudades  add constraint Destinos_PK primary  key (id_Ciudades)
-	  alter  table Pago.Venta_tickets add constraint Venta_tickets_PK primary  key (id_ticket)
+	  alter  table Pago.Venta_tickets add constraint Venta_tickets_PK primary  key (id_ticket, totalPagar)
 	  alter  table Pago.Informacion_pago add constraint Informacion_pago_PK primary  key (Id_pago)
 	  alter  table Clientes.Clientes add constraint Usuarios_frecuentes_PK primary  key (id_usuario)
-	  alter  table Clientes.Membresias add constraint Membresias_PK primary  key (curp)
+	  alter  table Clientes.Membresias add constraint Membresias_PK primary  key (idMembresia)
 
 	  -------Unique---------
 	  alter  table Viajes.Autobuses add constraint Uq_matricula unique (matricula)
@@ -152,8 +208,8 @@
 
 	  -------Foreing key---------
 	  alter  table Viajes.Corridas  add constraint Corridas_Autobuses_saliente_FK foreign key (Autobuses_idAutobus) references VIAJES.Autobuses (idAutobus)
-	  alter  table Viajes.Corridas  add constraint Corridas_Ciudaes_Destino_FK foreign  key (id_ciudades)  references VIAJES.Ciudades (idCiudades)
-	  alter  table Viajes.Corridas  add constraint Corridas_Ciudaes_Origen_FK foreign  key (id_ciudades1)  references VIAJES.Autobuses (idCiudades)
+	  alter  table Viajes.Corridas  add constraint Corridas_Ciudaes_Destino_FK foreign  key (Ciudades_id_ciudades)  references VIAJES.Ciudades (id_ciudades)
+	  alter  table Viajes.Corridas  add constraint Corridas_Ciudaes_Origen_FK foreign  key (Ciudades_id_ciudades1)  references VIAJES.Ciudades (id_Ciudades)
 
 	  alter  table Pago.Venta_tickets add constraint Venta_tickets_Viajes_salientes_FK foreign key (Viajes_salientes_id_viaje) references Viajes.Corridas (id_viaje)
 	  alter  table Pago.Venta_tickets add constraint Venta_tickets_Informacion_pago_FK foreign key (Informacion_pago_id_pago) references Pago.Informacion_pago (id_pago)
@@ -163,23 +219,88 @@
 	  alter  table Clientes.Miembros add constraint Miembros_Usuarios_frecuentes_FK foreign key (Usuarios_frecuentes_id_usuario) references Clientes.Clientes (id_usuario)
 
 	  alter  table Pago.Informacion_pago add constraint Informacion_pago__Clientes_FK foreign key (Clientes_id_usuario) references Clientes.Clientes (id_usuario)
-
+	  
 	  -------Restricciones de dominio---------
 	  alter table Viajes.Corridas add constraint Chk_Costos check (Costos>0)
 	  alter table Viajes.Corridas add constraint Chk_asientos check (asientosOcupados>0)
 	  alter table Viajes.Autobuses add constraint Chk_cantAsientos check (cantidad_asientos between 10 and 40)
-	  alter table Pago.venta_tickets add constraint Chk_noAsiento check (noAsiento between 10 and 40)
+	  alter table Pago.venta_tickets add constraint Chk_noAsiento check (noAsiento between 1 and 40)
 	  alter table Pago.venta_tickets add constraint Chk_estatus check (estatus IN ('0','1'))
 	  alter table Viajes.Ciudades add constraint Chk_idCiudades check (id_ciudades>=1 and id_ciudades<=80)
 	  alter table Pago.Informacion_pago add constraint Chk_numTarjeta check (num_tarjeta LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]')
-	  alter table Pago.Informacion_pago add constraint Chk_fechaExp check (fecha_expiracion BETWEEN YEAR(GETDATE()) AND 2030)
+	  alter table Pago.Informacion_pago add constraint Chk_fechaExp check (fecha_expiracion >= getdate() and fecha_expiracion <= dateadd(year, 10,getdate()))
 	  alter table Pago.Informacion_pago add constraint Chk_cvv check (cvv LIKE '[0-9][0-9][0-9]')
-	  
 
 
 	  -------Defaults---------
 	   alter  table Viajes.Corridas  add constraint Df_asientos_ocup default 0 for asientosOcupados
 	   alter  table Pago.Venta_tickets add constraint Df_total_pagar default 0.00 for totalPagar
-	   alter  table Clientes.Membresias add constraint Df_estatus default "Inactica" for Estatus
-	   alter  table Clientes.Membresias add constraint Df_Descuento default .10*totalpagar for Descuento
-	   alter  table Viajes.Autobuses add constraint Df_cantidad_asientos default 36 for cantidad_asientos
+	   alter  table Clientes.Membresias add constraint Df_estatus default 'Inactiva' for Estatus
+	   alter  table Clientes.Membresias add constraint Df_Descuento default .10  for Descuento
+	   alter  table Viajes.Autobuses add constraint Df_cantidad_asientos default 40 for cantidad_asientos
+
+	   /*************************************************************
+		INSERCION DE DATOS
+		*************************************************************/
+		select * from Viajes.Autobuses
+insert into Viajes.Autobuses values ('YBA-SA-SA','BMW','AZUL',40,1)
+insert into Viajes.Autobuses values ('YBA-SA-SK','BMW','VERDE',40,2)
+insert into Viajes.Autobuses values ('YBA-SA-SS','BMW','ROJO',40,3)
+insert into Viajes.Autobuses values ('YBA-SA-SO','BMW','VERDE',40,4)
+go
+
+select * from Viajes.Ciudades
+insert into Viajes.Ciudades values (1, 'Zamora')
+insert into Viajes.Ciudades values (2, 'Morelia')
+insert into Viajes.Ciudades values (3, 'Guadalajara')
+insert into Viajes.Ciudades values (4, 'Puerto Vallarta')
+insert into Viajes.Ciudades values (5, 'Manzanillo')
+go
+
+select * from Clientes.Membresias
+insert into Clientes.Membresias values (1, 'Basica', 1.10 , 1, 250.00)
+insert into Clientes.Membresias values (2, 'Avanzada', 1.15 , 1, 350.00)
+insert into Clientes.Membresias values (3, 'Premium', 1.20 , 1, 450.00)
+go
+
+select * from Viajes.Corridas
+insert into Viajes.Corridas values (1, '23:59:00','2022-05-25',1, '100','02:00:00','2022-05-26', 1,1,2)
+insert into Viajes.Corridas values (2, '21:59:00','2022-05-25',1, '450','01:00:00','2022-05-26', 2,1,3)
+insert into Viajes.Corridas values (3, '22:59:00','2022-05-25',1, '750','05:00:00','2022-05-26', 3,1,4)
+insert into Viajes.Corridas values (4, '03:59:00','2022-05-25',1, '600','09:00:00','2022-05-26', 4,1,5)
+insert into Viajes.Corridas values (5, '01:59:00','2022-05-26',3, '100','05:00:00','2022-05-27', 2,1,1)
+go
+
+
+select * from Clientes.Clientes
+insert into Clientes.Clientes values (1,'Ivan Gallegos','GAMI010116HMNTB3')
+insert into Clientes.Clientes values (2,'Alma Mayrani','GACI010115HMNBT1')
+insert into Clientes.Clientes values (3,'Jose Espinoza','ESFL010112RTVTJ9')
+insert into Clientes.Clientes values (4,'Erick Eduardo','ERED010126YBHBF9')
+insert into Clientes.Clientes values (5,'Elena Rodriguez','ELRO050116JMNBV7')
+GO
+
+select * from Pago.Informacion_pago
+insert into Pago.Informacion_pago values (1,'4201256515482516','2025-05-16','541',1)
+insert into Pago.Informacion_pago values (2,'4201516954654125','2026-06-16','415',2)
+insert into Pago.Informacion_pago values (3,'4201564951542123','2028-01-01','622',3)
+insert into Pago.Informacion_pago values (4,'4201251654123185','2030-02-06','551',4)
+insert into Pago.Informacion_pago values (5,'4201654187514564','2023-01-01','511',5)
+go
+
+select * from Clientes.Miembros
+insert into Clientes.Miembros values (1,1,GETDATE(),DATEADD(YEAR,1, GETDATE()))
+insert into Clientes.Miembros values (2,2,GETDATE(),DATEADD(YEAR,1, GETDATE()))
+insert into Clientes.Miembros values (3,3,GETDATE(),DATEADD(YEAR,1, GETDATE()))
+insert into Clientes.Miembros values (2,4,GETDATE(),DATEADD(YEAR,1, GETDATE()))
+insert into Clientes.Miembros values (2,5,GETDATE(),DATEADD(YEAR,1, GETDATE()))
+go
+
+
+select * from Pago.Venta_tickets
+insert into Pago.Venta_tickets values (1,1, GETDATE(),3,1,100, 1,1)
+insert into Pago.Venta_tickets values (2,2, GETDATE(),5,1,450, 2,2)
+insert into Pago.Venta_tickets values (3,3, GETDATE(),30,1,750, 3,3)
+insert into Pago.Venta_tickets values (4,4, GETDATE(),23,1,600, 4,4)
+insert into Pago.Venta_tickets values (5,5, GETDATE(),13,1,100, 5,5)
+go
